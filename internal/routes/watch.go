@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"EverythingSuckz/fsb/internal/bot"
 	"EverythingSuckz/fsb/internal/utils"
 	"fmt"
 	"net/http"
