@@ -97,26 +97,31 @@ func sendLink(ctx *ext.Context, u *ext.Update) error {
 		file.ID,
 	)
 	hash := utils.GetShortHash(fullHash)
-	link := fmt.Sprintf("%s/stream/%d?hash=%s", config.ValueOf.Host, messageID, hash)
-	text := styling.Code(link)
+
+	// Direct stream URL (for download)
+	streamLink := fmt.Sprintf("%s/stream/%d?hash=%s", config.ValueOf.Host, messageID, hash)
+	// Watch page URL (YouTube-style player)
+	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", config.ValueOf.Host, messageID, hash)
+
+	text := styling.Code(watchLink)
 	row := tg.KeyboardButtonRow{
 		Buttons: []tg.KeyboardButtonClass{
 			&tg.KeyboardButtonURL{
-				Text: "Download",
-				URL:  link + "&d=true",
+				Text: "⬇️ Download",
+				URL:  streamLink + "&d=true",
 			},
 		},
 	}
-	if strings.Contains(file.MimeType, "video") || strings.Contains(file.MimeType, "audio") || strings.Contains(file.MimeType, "pdf") {
+	if strings.Contains(file.MimeType, "video") || strings.Contains(file.MimeType, "audio") || strings.Contains(file.MimeType, "pdf") || strings.Contains(file.MimeType, "image") {
 		row.Buttons = append(row.Buttons, &tg.KeyboardButtonURL{
-			Text: "Stream",
-			URL:  link,
+			Text: "▶️ Watch",
+			URL:  watchLink,
 		})
 	}
 	markup := &tg.ReplyInlineMarkup{
 		Rows: []tg.KeyboardButtonRow{row},
 	}
-	if strings.Contains(link, "http://localhost") {
+	if strings.Contains(watchLink, "http://localhost") {
 		_, err = ctx.Reply(u, ext.ReplyTextStyledText(text), &ext.ReplyOpts{
 			NoWebpage:        false,
 			ReplyToMessageId: u.EffectiveMessage.ID,
