@@ -29,7 +29,6 @@ func start(ctx *ext.Context, u *ext.Update) error {
 	}
 
 	firstName := u.EffectiveUser().FirstName
-
 	text := "Hello " + firstName + ",\n\nI'm A simple link Generator Bot !💯.\n\nSend me any TELEGRAM file, I'll generate instant stream/download link for you!\n\n© Powered By @TeleStream"
 
 	row := tg.KeyboardButtonRow{
@@ -37,10 +36,6 @@ func start(ctx *ext.Context, u *ext.Update) error {
 			&tg.KeyboardButtonURL{
 				Text: "😇 SUPPORT",
 				URL:  "https://t.me/TeleStream",
-			},
-			&tg.KeyboardButtonURL{
-				Text: "SHARE 🚀",
-				URL:  "https://t.me/share/url?url=https://t.me/your_bot_username&text=Check out TeleStream Bot!",
 			},
 		},
 	}
