@@ -8,6 +8,8 @@ import (
 	"github.com/celestix/gotgproto/dispatcher/handlers"
 	"github.com/celestix/gotgproto/ext"
 	"github.com/celestix/gotgproto/storage"
+	"github.com/gotd/td/telegram/message/styling"
+	"github.com/gotd/td/tg"
 )
 
 func (m *command) LoadStart(dispatcher dispatcher.Dispatcher) {
@@ -26,6 +28,35 @@ func start(ctx *ext.Context, u *ext.Update) error {
 		ctx.Reply(u, ext.ReplyTextString("You are not allowed to use this bot."), nil)
 		return dispatcher.EndGroups
 	}
-	ctx.Reply(u, ext.ReplyTextString("Hi, send me any file to get a direct streamable link to that file."), nil)
+
+	firstName := u.EffectiveUser().FirstName
+
+	msgText := styling.Mentionable([]styling.StyledTextOption{
+		styling.Plain("Hello " + firstName + ",\n\nI'm A simple link Generator Bot !💯.\n\nSend me any TELEGRAM file, I'll generate instant stream/download link for you!\n\n© Powered By @TeleStream"),
+	})
+
+	row := tg.KeyboardButtonRow{
+		Buttons: []tg.KeyboardButtonClass{
+			&tg.KeyboardButtonURL{
+				Text: "😇 SUPPORT",
+				URL:  "https://t.me/TeleStream",
+			},
+			&tg.KeyboardButtonURL{
+				Text: "SHARE 🚀",
+				URL:  "https://t.me/share/url?url=https://t.me/your_bot_username&text=Check out TeleStream Bot!",
+			},
+		},
+	}
+
+	markup := &tg.ReplyInlineMarkup{
+		Rows: []tg.KeyboardButtonRow{row},
+	}
+
+	_, err := ctx.Reply(u, ext.ReplyTextStyledText(msgText), &ext.ReplyOpts{
+		Markup: markup,
+	})
+	if err != nil {
+		utils.Logger.Sugar().Error(err)
+	}
 	return dispatcher.EndGroups
 }
