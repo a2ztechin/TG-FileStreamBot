@@ -8,7 +8,6 @@ import (
 	"github.com/celestix/gotgproto/dispatcher/handlers"
 	"github.com/celestix/gotgproto/ext"
 	"github.com/celestix/gotgproto/storage"
-	"github.com/gotd/td/telegram/message/styling"
 	"github.com/gotd/td/tg"
 )
 
@@ -31,9 +30,7 @@ func start(ctx *ext.Context, u *ext.Update) error {
 
 	firstName := u.EffectiveUser().FirstName
 
-	msgText := styling.Mentionable([]styling.StyledTextOption{
-		styling.Plain("Hello " + firstName + ",\n\nI'm A simple link Generator Bot !💯.\n\nSend me any TELEGRAM file, I'll generate instant stream/download link for you!\n\n© Powered By @TeleStream"),
-	})
+	text := "Hello " + firstName + ",\n\nI'm A simple link Generator Bot !💯.\n\nSend me any TELEGRAM file, I'll generate instant stream/download link for you!\n\n© Powered By @TeleStream"
 
 	row := tg.KeyboardButtonRow{
 		Buttons: []tg.KeyboardButtonClass{
@@ -52,7 +49,7 @@ func start(ctx *ext.Context, u *ext.Update) error {
 		Rows: []tg.KeyboardButtonRow{row},
 	}
 
-	_, err := ctx.Reply(u, ext.ReplyTextStyledText(msgText), &ext.ReplyOpts{
+	_, err := ctx.Reply(u, ext.ReplyTextString(text), &ext.ReplyOpts{
 		Markup: markup,
 	})
 	if err != nil {
