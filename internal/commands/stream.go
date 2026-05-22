@@ -99,8 +99,12 @@ func sendLink(ctx *ext.Context, u *ext.Update) error {
 	hash := utils.GetShortHash(fullHash)
 
 	// Direct stream URL (for download)
-	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", config.ValueOf.Host, messageID, hash)
-	streamLink := fmt.Sprintf("%s/stream/%d?hash=%s", config.ValueOf.Host, messageID, hash)
+	host := config.ValueOf.Host
+	if host == "" {
+		host = "https://melo007-s.hf.space"
+	}
+	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", host, messageID, hash)
+	streamLink := fmt.Sprintf("%s/stream/%d?hash=%s", host, messageID, hash)
 	// Watch page URL (YouTube-style player)
 
 	text := styling.Code(watchLink)
