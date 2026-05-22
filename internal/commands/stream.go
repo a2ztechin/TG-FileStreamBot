@@ -19,9 +19,7 @@ import (
 func (m *command) LoadStream(dispatcher dispatcher.Dispatcher) {
 	log := m.log.Named("start")
 	defer log.Sugar().Info("Loaded")
-	dispatcher.AddHandler(
-		handlers.NewMessage(nil, sendLink),
-	)
+	dispatcher.AddHandler(handlers.NewMessage(nil, sendLink))
 }
 
 func supportedMediaFilter(m *types.Message) (bool, error) {
@@ -84,62 +82,63 @@ func sendLink(ctx *ext.Context, u *ext.Update) error {
 		ctx.Reply(u, ext.ReplyTextString("Error - unexpected message type"), nil)
 		return dispatcher.EndGroups
 	}
-	doc := msg.Media
-	file, err := utils.FileFromMedia(doc)
+
+	file, err := utils.FileFromMedia(msg.Media)
 	if err != nil {
 		ctx.Reply(u, ext.ReplyTextString(fmt.Sprintf("Error - %s", err.Error())), nil)
 		return dispatcher.EndGroups
 	}
-	fullHash := utils.PackFile(
-		file.FileName,
-		file.FileSize,
-		file.MimeType,
-		file.ID,
-	)
+
+	fullHash := utils.PackFile(file.FileName, file.FileSize, file.MimeType, file.ID)
 	hash := utils.GetShortHash(fullHash)
 
-	// Direct stream URL (for download)
 	host := config.ValueOf.Host
 	if host == "" {
 		host = "https://melo007-s.hf.space"
 	}
-	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", host, messageID, hash)
-	streamLink := fmt.Sprintf("%s/stream/%d?hash=%s", host, messageID, hash)
-	// Watch page URL (YouTube-style player)
 
-	text := styling.Code(watchLink)
+	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", host, messageID, hash)
+	downloadLink := fmt.Sprintf("%s/watch/%d?hash=%s&d=true", host, messageID, hash)
+
+	// Delivery message matching screenshot style
+	fileType := "📄 Document"
+	if strings.Contains(file.MimeType, "video") {
+		fileType = "🎬 Video"
+	} else if strings.Contains(file.MimeType, "audio") {
+		fileType = "🎵 Audio"
+	} else if strings.Contains(file.MimeType, "image") {
+		fileType = "🖼️ Image"
+	}
+
+	msgText := fmt.Sprintf("File Name: %s\n\nStreaming / Direct Download Link\n👇 %s\n\n© Powered by @TeleStream", file.FileName, watchLink)
+
+	text := styling.Plain(msgText)
+	_ = fileType
+
 	row := tg.KeyboardButtonRow{
 		Buttons: []tg.KeyboardButtonClass{
 			&tg.KeyboardButtonURL{
 				Text: "⬇️ Download",
-				URL:  streamLink + "&d=true",
+				URL:  downloadLink,
+			},
+			&tg.KeyboardButtonURL{
+				Text: "▶️ Watch",
+				URL:  watchLink,
 			},
 		},
 	}
-	if strings.Contains(file.MimeType, "video") || strings.Contains(file.MimeType, "audio") || strings.Contains(file.MimeType, "pdf") || strings.Contains(file.MimeType, "image") {
-		row.Buttons = append(row.Buttons, &tg.KeyboardButtonURL{
-			Text: "▶️ Watch",
-			URL:  watchLink,
-		})
-	}
+
 	markup := &tg.ReplyInlineMarkup{
 		Rows: []tg.KeyboardButtonRow{row},
 	}
-	if strings.Contains(watchLink, "http://localhost") {
-		_, err = ctx.Reply(u, ext.ReplyTextStyledText(text), &ext.ReplyOpts{
-			NoWebpage:        false,
-			ReplyToMessageId: u.EffectiveMessage.ID,
-		})
-	} else {
-		_, err = ctx.Reply(u, ext.ReplyTextStyledText(text), &ext.ReplyOpts{
-			Markup:           markup,
-			NoWebpage:        false,
-			ReplyToMessageId: u.EffectiveMessage.ID,
-		})
-	}
+
+	_, err = ctx.Reply(u, ext.ReplyTextStyledText(text), &ext.ReplyOpts{
+		Markup:           markup,
+		NoWebpage:        true,
+		ReplyToMessageId: u.EffectiveMessage.ID,
+	})
 	if err != nil {
 		utils.Logger.Sugar().Error(err)
-		ctx.Reply(u, ext.ReplyTextString(fmt.Sprintf("Error - %s", err.Error())), nil)
 	}
 	return dispatcher.EndGroups
 }
