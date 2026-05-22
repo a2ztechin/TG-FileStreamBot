@@ -16,6 +16,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var log *zap.Logger
+
 func (e *allRoutes) LoadWatch(r *Route) {
 	log = e.log.Named("Watch")
 	defer log.Info("Loaded watch route")
