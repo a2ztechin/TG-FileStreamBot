@@ -99,9 +99,9 @@ func sendLink(ctx *ext.Context, u *ext.Update) error {
 	hash := utils.GetShortHash(fullHash)
 
 	// Direct stream URL (for download)
+	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", config.ValueOf.Host, messageID, hash)
 	streamLink := fmt.Sprintf("%s/stream/%d?hash=%s", config.ValueOf.Host, messageID, hash)
 	// Watch page URL (YouTube-style player)
-	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", config.ValueOf.Host, messageID, hash)
 
 	text := styling.Code(watchLink)
 	row := tg.KeyboardButtonRow{
