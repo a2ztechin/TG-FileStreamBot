@@ -94,7 +94,7 @@ func sendLink(ctx *ext.Context, u *ext.Update) error {
 
 	host := config.ValueOf.Host
 	if host == "" {
-		host = "https://melo007-s.hf.space"
+		host = "https://s.dailymatrix.xyz"
 	}
 
 	watchLink := fmt.Sprintf("%s/watch/%d?hash=%s", host, messageID, hash)
