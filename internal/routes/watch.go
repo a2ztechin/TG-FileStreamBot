@@ -43,11 +43,9 @@ func getWatchRoute(ctx *gin.Context) {
 		return
 	}
 
-	// If ?player=1 or Accept header is HTML → serve the watch page
-	// Otherwise stream the file directly (so the watch page video src works)
 	acceptHeader := r.Header.Get("Accept")
-	isPageRequest := ctx.Query("player") == "1" ||
-		ctx.Query("d") == "" && strings.Contains(acceptHeader, "text/html")
+	isDownload := ctx.Query("d") == "true"
+	isPageRequest := !isDownload && strings.Contains(acceptHeader, "text/html")
 
 	worker := bot.GetNextWorker()
 	file, err := utils.TimeFuncWithResult(log, "FileFromMessage", func() (*types.File, error) {
@@ -65,9 +63,10 @@ func getWatchRoute(ctx *gin.Context) {
 	}
 
 	if isPageRequest {
-		watchURL := fmt.Sprintf("https://s.dailymatrix.xyz/watch/%d?hash=%s", messageID, authHash)
+		// Stream/download go directly to HF; share link uses CF domain
 		streamURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s", messageID, authHash)
 		downloadURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s&d=true", messageID, authHash)
+		shareURL := fmt.Sprintf("https://s.dailymatrix.xyz/watch/%d?hash=%s", messageID, authHash)
 
 		mimeType := file.MimeType
 		if mimeType == "" {
@@ -77,13 +76,13 @@ func getWatchRoute(ctx *gin.Context) {
 		isAudio := len(mimeType) >= 5 && mimeType[:5] == "audio"
 		isImage := len(mimeType) >= 5 && mimeType[:5] == "image"
 
-		html := buildWatchPage(file.FileName, mimeType, streamURL, downloadURL, watchURL, isVideo, isAudio, isImage)
+		html := buildWatchPage(file.FileName, mimeType, streamURL, downloadURL, shareURL, isVideo, isAudio, isImage)
 		ctx.Header("Content-Type", "text/html; charset=utf-8")
 		ctx.String(http.StatusOK, html)
 		return
 	}
 
-	// ── Stream the file directly ──────────────────────────────────────────────
+	// ── Stream/download the file ──────────────────────────────────────────────
 	if file.FileSize == 0 {
 		res, err := worker.Client.API().UploadGetFile(ctx, &tg.UploadGetFileRequest{
 			Location: file.Location,
@@ -110,7 +109,7 @@ func getWatchRoute(ctx *gin.Context) {
 	var start, end int64
 	rangeHeader := r.Header.Get("Range")
 
-	if ctx.Query("d") == "true" {
+	if isDownload {
 		ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.FileName))
 	} else {
 		ctx.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", file.FileName))
@@ -155,36 +154,28 @@ func getWatchRoute(ctx *gin.Context) {
 	}
 }
 
-func buildWatchPage(fileName, mimeType, streamURL, downloadURL, watchURL string, isVideo, isAudio, isImage bool) string {
+func buildWatchPage(fileName, mimeType, streamURL, downloadURL, shareURL string, isVideo, isAudio, isImage bool) string {
 	var playerBlock string
 	if isVideo {
-		playerBlock = fmt.Sprintf(`<div class="video-wrap">
-        <video id="vid" controls preload="none" playsinline>
-          <source src="%s" type="%s">
-        </video>
-        <div class="play-overlay" id="playBtn" onclick="startPlay()">
-          <div class="play-circle">
-            <svg viewBox="0 0 24 24" fill="white" width="48" height="48"><path d="M8 5v14l11-7z"/></svg>
-          </div>
-        </div>
-      </div>`, streamURL, mimeType)
+		playerBlock = fmt.Sprintf(
+			`<div class="vwrap"><video id="vid" controls preload="none" playsinline><source src="%s" type="%s"></video><div class="overlay" id="ov" onclick="play()"><div class="pcircle"><svg viewBox="0 0 24 24" fill="white" width="52" height="52"><path d="M8 5v14l11-7z"/></svg></div></div></div>`,
+			streamURL, mimeType,
+		)
 	} else if isAudio {
-		playerBlock = fmt.Sprintf(`<div class="audio-inner">
-        <div class="disc" id="disc">🎵</div>
-        <audio controls preload="metadata" id="audioEl">
-          <source src="%s" type="%s">
-        </audio>
-      </div>`, streamURL, mimeType)
+		playerBlock = fmt.Sprintf(
+			`<div class="audio-inner"><div class="disc" id="disc">🎵</div><audio controls preload="metadata" id="audioEl"><source src="%s" type="%s"></audio></div>`,
+			streamURL, mimeType,
+		)
 	} else if isImage {
 		playerBlock = fmt.Sprintf(`<img src="%s" alt="%s">`, streamURL, fileName)
 	} else {
-		playerBlock = fmt.Sprintf(`<div class="no-preview">
-        <div style="font-size:4rem">📁</div>
-        <p>%s</p>
-        <a href="%s" class="btn-dl">↓ Download File</a>
-      </div>`, fileName, downloadURL)
+		playerBlock = fmt.Sprintf(
+			`<div class="no-preview"><div style="font-size:4rem">📁</div><p>%s</p><a href="%s" class="btn-dl2" download>↓ Download File</a></div>`,
+			fileName, downloadURL,
+		)
 	}
 
+	// shareURL for share box, downloadURL for download button
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -195,35 +186,34 @@ func buildWatchPage(fileName, mimeType, streamURL, downloadURL, watchURL string,
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
-.bar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;background:#111;border-bottom:1px solid #222}
+.bar{display:flex;align-items:center;padding:0 20px;height:56px;background:#111;border-bottom:1px solid #222}
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
 .logo-box{width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:10px;display:flex;align-items:center;justify-content:center}
 .logo-box svg{width:18px;height:18px;fill:#fff}
 .logo-name{font-size:17px;font-weight:700;background:linear-gradient(90deg,#a855f7,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.page{max-width:560px;margin:0 auto;padding:20px 12px 60px;overflow-x:hidden}
-.player-card{background:#111;border-radius:16px;overflow:hidden;margin-bottom:16px}
-.player-card video{width:100%%;display:block}
-.video-wrap{position:relative;background:#000;line-height:0}
-.play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,.35);transition:opacity .2s}
-.play-overlay.hide{opacity:0;pointer-events:none}
-.play-circle{width:80px;height:80px;border-radius:50%%;background:rgba(124,58,237,.85);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(0,0,0,.5);transition:transform .15s}
-.play-circle:hover{transform:scale(1.1)}
-.player-card img{width:100%%;display:block;max-height:400px;object-fit:contain;background:#000}
-.audio-inner{padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;background:#111}
-.disc{width:110px;height:110px;border-radius:50%%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 40px rgba(124,58,237,.4);animation:spin 8s linear infinite paused}
+.page{max-width:760px;margin:0 auto;padding:20px 16px 60px;overflow-x:hidden}
+.player-card{background:#000;border-radius:16px;overflow:hidden;margin-bottom:16px;line-height:0}
+.vwrap{position:relative;background:#000}
+.vwrap video{width:100%%;display:block}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,.4);transition:opacity .2s}
+.overlay.gone{opacity:0;pointer-events:none}
+.pcircle{width:80px;height:80px;border-radius:50%%;background:rgba(124,58,237,.9);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 32px rgba(0,0,0,.6);transition:transform .15s}
+.pcircle:hover{transform:scale(1.1)}
+.audio-inner{padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;background:#111;border-radius:16px}
+.disc{width:110px;height:110px;border-radius:50%%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:44px;animation:spin 8s linear infinite paused}
 .disc.on{animation-play-state:running}
 @keyframes spin{to{transform:rotate(360deg)}}
 .audio-inner audio{width:100%%;accent-color:#a855f7}
-.no-preview{padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.player-card img{width:100%%;display:block;max-height:500px;object-fit:contain;background:#000}
+.no-preview{padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;background:#111;border-radius:16px}
 .no-preview p{color:#888;font-size:14px;word-break:break-all}
 .info-card{background:#111;border-radius:16px;padding:20px;margin-bottom:16px}
-.file-name{font-size:15px;font-weight:700;line-height:1.5;word-break:break-all;overflow-wrap:anywhere;margin-bottom:16px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.file-name{font-size:16px;font-weight:700;line-height:1.5;word-break:break-all;overflow-wrap:anywhere;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .stat{background:#1a1a1a;border-radius:10px;padding:12px 14px}
 .stat-label{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
-.stat-value{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%%}
-.action-row{display:flex;gap:10px}
-.btn-dl2{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#1a1a1a;color:#f1f1f1;border:1px solid #333;border-radius:10px;padding:13px;font-size:14px;font-weight:700;text-decoration:none;transition:background .15s}
+.stat-value{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-dl2{display:flex;align-items:center;justify-content:center;gap:8px;background:#1a1a1a;color:#f1f1f1;border:1px solid #333;border-radius:10px;padding:13px;font-size:14px;font-weight:700;text-decoration:none;transition:background .15s;width:100%%;text-align:center}
 .btn-dl2:hover{background:#222}
 .share-card{background:#111;border-radius:16px;padding:20px}
 .share-head{font-size:13px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
@@ -245,7 +235,6 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
     <div class="logo-box"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
     <span class="logo-name">TeleStream</span>
   </a>
-  <a href="%s" class="btn-dl">↓ Download</a>
 </div>
 <div class="page">
   <div class="player-card">%s</div>
@@ -255,9 +244,7 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
       <div class="stat"><div class="stat-label">Type</div><div class="stat-value">%s</div></div>
       <div class="stat"><div class="stat-label">File</div><div class="stat-value" title="%s">%s</div></div>
     </div>
-    <div class="action-row">
-      <a href="%s" class="btn-dl2">↓ Download</a>
-    </div>
+    <a href="%s" class="btn-dl2" download>↓ Download</a>
   </div>
   <div class="share-card">
     <div class="share-head">Share this file</div>
@@ -273,21 +260,24 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
 </div>
 <div class="toast" id="toast"></div>
 <script>
+function play(){const v=document.getElementById('vid');const o=document.getElementById('ov');o.classList.add('gone');v.play()}
+const vv=document.getElementById('vid');
+if(vv){vv.addEventListener('pause',()=>{const o=document.getElementById('ov');if(o)o.classList.remove('gone')});vv.addEventListener('play',()=>{const o=document.getElementById('ov');if(o)o.classList.add('gone')})}
 function cp(){const el=document.getElementById('sl');el.select();navigator.clipboard.writeText(el.value).then(()=>{const t=document.getElementById('toast');t.textContent='✅ Link copied!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)})}
-function startPlay(){const v=document.getElementById('vid');const o=document.getElementById('playBtn');if(o)o.classList.add('hide');if(v){v.play();}};
-const v2=document.getElementById('vid');if(v2){v2.addEventListener('pause',()=>{const o=document.getElementById('playBtn');if(o)o.classList.remove('hide')});v2.addEventListener('play',()=>{const o=document.getElementById('playBtn');if(o)o.classList.add('hide')})}
 const a=document.getElementById('audioEl'),d=document.getElementById('disc');
 if(a&&d){a.addEventListener('play',()=>d.classList.add('on'));a.addEventListener('pause',()=>d.classList.remove('on'))}
 </script>
 </body>
 </html>`,
-		fileName,
-		playerBlock,
-		fileName,
-		mimeType, fileName, fileName,
-		downloadURL,
-		watchURL,
-		watchURL,
-		fileName+"%0A"+watchURL,
+		// args in order of %s in template:
+		fileName,        // <title>
+		playerBlock,     // player-card content
+		fileName,        // file-name div
+		mimeType,        // stat type value
+		fileName, fileName, // stat file title + value
+		downloadURL,     // download button href
+		shareURL,        // share input value
+		shareURL,        // telegram share url
+		fileName+"%0A"+shareURL, // whatsapp text
 	)
 }
