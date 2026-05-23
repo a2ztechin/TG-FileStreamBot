@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gotd/td/tg"
@@ -46,7 +47,7 @@ func getWatchRoute(ctx *gin.Context) {
 	// Otherwise stream the file directly (so the watch page video src works)
 	acceptHeader := r.Header.Get("Accept")
 	isPageRequest := ctx.Query("player") == "1" ||
-		(acceptHeader != "" && len(acceptHeader) > 4 && acceptHeader[:9] == "text/html")
+		ctx.Query("d") == "" && strings.Contains(acceptHeader, "text/html")
 
 	worker := bot.GetNextWorker()
 	file, err := utils.TimeFuncWithResult(log, "FileFromMessage", func() (*types.File, error) {
@@ -212,8 +213,6 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
 .stat-label{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
 .stat-value{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%%}
 .action-row{display:flex;gap:10px}
-.btn-watch{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;text-decoration:none;transition:opacity .15s}
-.btn-watch:hover{opacity:.9}
 .btn-dl2{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#1a1a1a;color:#f1f1f1;border:1px solid #333;border-radius:10px;padding:13px;font-size:14px;font-weight:700;text-decoration:none;transition:background .15s}
 .btn-dl2:hover{background:#222}
 .share-card{background:#111;border-radius:16px;padding:20px}
@@ -247,7 +246,6 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
       <div class="stat"><div class="stat-label">File</div><div class="stat-value" title="%s">%s</div></div>
     </div>
     <div class="action-row">
-      <a href="%s" class="btn-watch">▶ Stream</a>
       <a href="%s" class="btn-dl2">↓ Download</a>
     </div>
   </div>
@@ -276,7 +274,7 @@ if(a&&d){a.addEventListener('play',()=>d.classList.add('on'));a.addEventListener
 		playerBlock,
 		fileName,
 		mimeType, fileName, fileName,
-		streamURL, downloadURL,
+		downloadURL,
 		watchURL,
 		watchURL,
 		fileName+"%0A"+watchURL,
