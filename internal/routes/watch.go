@@ -65,7 +65,7 @@ func getWatchRoute(ctx *gin.Context) {
 	}
 
 	if isPageRequest {
-		watchURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s", messageID, authHash)
+		watchURL := fmt.Sprintf("https://s.dailymatrix.xyz/watch/%d?hash=%s", messageID, authHash)
 		streamURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s", messageID, authHash)
 		downloadURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s&d=true", messageID, authHash)
 
@@ -158,9 +158,16 @@ func getWatchRoute(ctx *gin.Context) {
 func buildWatchPage(fileName, mimeType, streamURL, downloadURL, watchURL string, isVideo, isAudio, isImage bool) string {
 	var playerBlock string
 	if isVideo {
-		playerBlock = fmt.Sprintf(`<video controls autoplay preload="metadata" playsinline>
-        <source src="%s" type="%s">
-      </video>`, streamURL, mimeType)
+		playerBlock = fmt.Sprintf(`<div class="video-wrap">
+        <video id="vid" controls preload="none" playsinline>
+          <source src="%s" type="%s">
+        </video>
+        <div class="play-overlay" id="playBtn" onclick="startPlay()">
+          <div class="play-circle">
+            <svg viewBox="0 0 24 24" fill="white" width="48" height="48"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+      </div>`, streamURL, mimeType)
 	} else if isAudio {
 		playerBlock = fmt.Sprintf(`<div class="audio-inner">
         <div class="disc" id="disc">🎵</div>
@@ -196,6 +203,11 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
 .page{max-width:560px;margin:0 auto;padding:20px 12px 60px;overflow-x:hidden}
 .player-card{background:#111;border-radius:16px;overflow:hidden;margin-bottom:16px}
 .player-card video{width:100%%;display:block}
+.video-wrap{position:relative;background:#000;line-height:0}
+.play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,.35);transition:opacity .2s}
+.play-overlay.hide{opacity:0;pointer-events:none}
+.play-circle{width:80px;height:80px;border-radius:50%%;background:rgba(124,58,237,.85);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(0,0,0,.5);transition:transform .15s}
+.play-circle:hover{transform:scale(1.1)}
 .player-card img{width:100%%;display:block;max-height:400px;object-fit:contain;background:#000}
 .audio-inner{padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;background:#111}
 .disc{width:110px;height:110px;border-radius:50%%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 40px rgba(124,58,237,.4);animation:spin 8s linear infinite paused}
@@ -262,6 +274,8 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
 <div class="toast" id="toast"></div>
 <script>
 function cp(){const el=document.getElementById('sl');el.select();navigator.clipboard.writeText(el.value).then(()=>{const t=document.getElementById('toast');t.textContent='✅ Link copied!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)})}
+function startPlay(){const v=document.getElementById('vid');const o=document.getElementById('playBtn');if(o)o.classList.add('hide');if(v){v.play();}};
+const v2=document.getElementById('vid');if(v2){v2.addEventListener('pause',()=>{const o=document.getElementById('playBtn');if(o)o.classList.remove('hide')});v2.addEventListener('play',()=>{const o=document.getElementById('playBtn');if(o)o.classList.add('hide')})}
 const a=document.getElementById('audioEl'),d=document.getElementById('disc');
 if(a&&d){a.addEventListener('play',()=>d.classList.add('on'));a.addEventListener('pause',()=>d.classList.remove('on'))}
 </script>
