@@ -66,8 +66,8 @@ func getWatchRoute(ctx *gin.Context) {
 
 	if isPageRequest {
 		watchURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s", messageID, authHash)
-		streamURL := fmt.Sprintf("/watch/%d?hash=%s", messageID, authHash)
-		downloadURL := fmt.Sprintf("/watch/%d?hash=%s&d=true", messageID, authHash)
+		streamURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s", messageID, authHash)
+		downloadURL := fmt.Sprintf("https://melo007-s.hf.space/watch/%d?hash=%s&d=true", messageID, authHash)
 
 		mimeType := file.MimeType
 		if mimeType == "" {
@@ -193,8 +193,6 @@ body{background:#0d0d0d;color:#f1f1f1;font-family:'Inter',sans-serif;min-height:
 .logo-box{width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:10px;display:flex;align-items:center;justify-content:center}
 .logo-box svg{width:18px;height:18px;fill:#fff}
 .logo-name{font-size:17px;font-weight:700;background:linear-gradient(90deg,#a855f7,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.btn-dl{display:inline-flex;align-items:center;gap:6px;background:#1e1e1e;border:1px solid #333;color:#f1f1f1;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s}
-.btn-dl:hover{background:#2a2a2a}
 .page{max-width:560px;margin:0 auto;padding:20px 12px 60px;overflow-x:hidden}
 .player-card{background:#111;border-radius:16px;overflow:hidden;margin-bottom:16px}
 .player-card video{width:100%%;display:block}
@@ -270,7 +268,6 @@ if(a&&d){a.addEventListener('play',()=>d.classList.add('on'));a.addEventListener
 </body>
 </html>`,
 		fileName,
-		downloadURL,
 		playerBlock,
 		fileName,
 		mimeType, fileName, fileName,
